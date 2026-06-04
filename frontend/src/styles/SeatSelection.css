@@ -1,0 +1,258 @@
+.seat-selection {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  animation: slideDown 0.3s ease;
+}
+
+.seat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid var(--gray);
+  padding-bottom: 1rem;
+}
+
+.seat-header h2 {
+  flex: 1;
+  text-align: center;
+  color: var(--dark-blue);
+  font-size: 1.5rem;
+}
+
+.seat-header p {
+  color: var(--gray);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.back-btn {
+  background: var(--gray);
+  color: var(--dark-blue);
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.back-btn:hover {
+  background: var(--primary-red);
+  color: white;
+}
+
+.seat-grid-container {
+  display: grid;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  background: var(--light-white);
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+.deck {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid var(--primary-red);
+}
+
+.deck h3 {
+  color: var(--dark-blue);
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.seats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+  gap: 0.6rem;
+}
+
+.seat {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--gray);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  background: white;
+  color: var(--dark-blue);
+}
+
+.seat:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.seat-available {
+  background: #90ee90;
+  border-color: #28a745;
+  color: white;
+}
+
+.seat-available:hover:not(:disabled) {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.seat-booked {
+  background: #ff6b6b;
+  border-color: #cc0000;
+  color: white;
+}
+
+.seat-locked {
+  background: #ffd700;
+  border-color: #ffaa00;
+  color: var(--dark-blue);
+}
+
+.seat-female_reserved {
+  background: #ff69b4;
+  border-color: #ff1493;
+  color: white;
+}
+
+.seat-selected {
+  background: var(--primary-red);
+  border-color: #b81c23;
+  color: white;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(230, 57, 70, 0.4);
+}
+
+.seat-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  justify-content: center;
+  padding: 1rem;
+  background: var(--light-white);
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-item .seat {
+  width: 24px;
+  height: 24px;
+}
+
+.seat-footer {
+  background: var(--light-white);
+  padding: 1.5rem;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.selected-info {
+  flex: 1;
+}
+
+.selected-info p {
+  margin: 0.3rem 0;
+  color: var(--dark-blue);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.lock-btn,
+.proceed-btn {
+  padding: 0.8rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: var(--transition);
+}
+
+.lock-btn {
+  background: var(--accent-gold);
+  color: white;
+}
+
+.lock-btn:hover {
+  background: #e08b3d;
+  transform: translateY(-2px);
+}
+
+.proceed-btn {
+  background: linear-gradient(135deg, var(--primary-red) 0%, #d62828 100%);
+  color: white;
+}
+
+.proceed-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(230, 57, 70, 0.3);
+}
+
+.proceed-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .seat-selection {
+    padding: 1.5rem;
+  }
+
+  .seat-header {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+
+  .back-btn {
+    width: 100%;
+  }
+
+  .seats-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .seat-footer {
+    flex-direction: column;
+  }
+
+  .actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .lock-btn,
+  .proceed-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .seat-grid-container {
+    padding: 1rem;
+  }
+
+  .deck {
+    padding: 1rem;
+  }
+
+  .seat-legend {
+    gap: 1rem;
+    justify-content: flex-start;
+  }
+}

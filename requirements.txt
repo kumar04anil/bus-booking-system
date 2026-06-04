@@ -1,0 +1,73 @@
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+pydantic[email]==2.7.1
+python-multipart==0.0.9
+
+--------------------------
+HOW TO RUN THE APP
+--------------------------
+
+BACKEND SETUP:
+# 1. Install Python dependencies
+pip install -r requirements.txt
+
+# 2. Run the FastAPI server
+python main.py
+# or: uvicorn main:app --reload --port 8000
+
+FRONTEND SETUP:
+# 1. Navigate to frontend directory
+cd frontend
+
+# 2. Install Node dependencies
+npm install
+
+# 3. Run React dev server (runs on http://localhost:5173)
+npm run dev
+
+# 4. For production build:
+npm run build
+
+--------------------------
+URLS
+--------------------------
+Backend API:       http://localhost:8000/api/
+API Documentation: http://localhost:8000/docs
+Frontend App:      http://localhost:5173 (dev) or http://localhost:8000 (production)
+
+--------------------------
+ARCHITECTURE
+--------------------------
+Backend:  FastAPI + Pydantic + Mock Data
+Frontend: React + Vite + Axios
+
+API Endpoints (all return JSON):
+- GET  /api/search/cities           — List all cities
+- GET  /api/search/trips            — Search buses (filters: source, destination, date, type, AC)
+- GET  /api/booking/seats/{trip_id} — Get seat map for a trip
+- POST /api/booking/lock            — Lock selected seats (10 min expiry)
+- POST /api/booking/confirm         — Confirm booking
+- POST /api/booking/cancel/{id}     — Cancel booking
+- GET  /api/booking/{id}            — Get booking details
+- GET  /api/booking/pnr/{pnr}       — Get booking by PNR
+
+--------------------------
+IMPLEMENTED FEATURES
+--------------------------
+✅ Segment-aware seat availability (A→B frees B→C)
+✅ 10-minute seat locking with countdown timer
+✅ Max 6 seats per transaction
+✅ Cancellation refund matrix (90% / 50% / 0%)
+✅ Dual-deck sleeper grid (L/U + aisle)
+✅ Chair car 3+2 grid with row labels
+✅ Color-coded seats (green/red/pink/blue/yellow)
+✅ Dynamic fare breakdown (base + GST + convenience)
+✅ PNR generation + booking confirmation
+✅ Passenger details form per seat
+✅ Mock payment (UPI/Card/Net Banking)
+✅ Search with filters (city, date, type, AC, window)
+✅ Fare breakdown toggle + route stops reveal
+✅ Result sorting (price, rating, departure)
+✅ Responsive mobile-first design
+✅ Red + White + Dark Blue theme
+✅ React SPA with Vite

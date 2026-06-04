@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BusGo – Book Your Journey</title>
+  <script src="[cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+  <link href="[fonts.googleapis.com](https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap)" rel="stylesheet"/>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .hero-gradient { background: linear-gradient(135deg, #1e3a5f 0%, #c0392b 100%); }
+    .card-hover { transition: transform .2s, box-shadow .2s; }
+    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.15); }
+    .search-card { background: rgba(255,255,255,.97); backdrop-filter: blur(10px); }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+<!-- ── Navbar ────────────────────────────────────────────────── -->
+<nav class="bg-[#1e3a5f] text-white shadow-lg sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <span class="text-2xl">🚌</span>
+      <span class="font-bold text-xl tracking-tight">BusGo</span>
+    </div>
+    <div class="hidden md:flex items-center gap-6 text-sm font-medium">
+      <a href="#" class="hover:text-red-300 transition">My Trips</a>
+      <a href="#" class="hover:text-red-300 transition">Offers</a>
+      <a href="#" class="hover:text-red-300 transition">Help</a>
+      <button class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition font-semibold">
+        Login
+      </button>
+    </div>
+    <!-- Mobile menu -->
+    <button class="md:hidden text-white" onclick="toggleMobileMenu()">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+  </div>
+  <div id="mobileMenu" class="hidden md:hidden px-4 pb-3 flex flex-col gap-3 text-sm">
+    <a href="#" class="hover:text-red-300">My Trips</a>
+    <a href="#" class="hover:text-red-300">Offers</a>
+    <a href="#" class="hover:text-red-300">Help</a>
+    <button class="bg-red-600 px-4 py-2 rounded-lg font-semibold w-fit">Login</button>
+  </div>
+</nav>
+
+<!-- ── Hero + Search ─────────────────────────────────────────── -->
+<section class="hero-gradient py-14 px-4">
+  <div class="max-w-4xl mx-auto text-center text-white mb-8">
+    <h1 class="text-4xl md:text-5xl font-extrabold mb-3 leading-tight">
+      Book Bus Tickets <span class="text-red-300">Instantly</span>
+    </h1>
+    <p class="text-blue-100 text-lg">Safe · Comfortable · Affordable journeys across India</p>
+  </div>
+
+  <!-- Search Card -->
+  <div class="search-card max-w-4xl mx-auto rounded-2xl shadow-2xl p-6 md:p-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="searchForm">
+
+      <!-- Source -->
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">From</label>
+        <div class="relative">
+          <span class="absolute left-3 top-3 text-gray-400">📍</span>
+          <select id="source" class="w-full pl-9 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none bg-white text-gray-800 font-medium">
+            <option value="">Select City</option>
+            {% for city in cities %}
+            <option value="{{ city }}">{{ city }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Swap + Destination -->
+      <div class="flex flex-col gap-1 relative">
+        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">To</label>
+        <div class="relative">
+          <span class="absolute left-3 top-3 text-gray-400">🏁</span>
+          <select id="destination" class="w-full pl-9 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none bg-white text-gray-800 font-medium">
+            <option value="">Select City</option>
+            {% for city in cities %}
+            <option value="{{ city }}">{{ city }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <!-- Swap btn (desktop) -->
+        <button onclick="swapCities()"
+          class="hidden md:flex absolute -left-5 top-8 z-10 bg-red-600 text-white rounded-full w-9 h-9 items-center justify-center shadow-lg hover:bg-red-700 transition text-sm font-bold"
+          title="Swap">⇄</button>
+      </div>
+
+      <!-- Date -->
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Journey Date</label>
+        <div class="relative">
+          <span class="absolute left-3 top-3 text-gray-400">📅</span>
+          <input type="date" id="journeyDate" value="{{ today }}" min="{{ today }}"
+            class="w-full pl-9 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none bg-white text-gray-800 font-medium"/>
+        </div>
+      </div>
+
+      <!-- Passengers -->
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Passengers</label>
+        <div class="relative">
+          <span class="absolute left-3 top-3 text-gray-400">👤</span>
+          <select id="passengerCount" class="w-full pl-9 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none bg-white text-gray-800 font-medium">
+            {% for i in range(1,7) %}
+            <option value="{{ i }}">{{ i }} Passenger{% if i > 1 %}s{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Bus Type -->
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Bus Type</label>
+        <div class="relative">
+          <span class="absolute left-3 top-3 text-gray-400">🚌</span>
+          <select id="busType" class="w-full pl-9 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none bg-white text-gray-800 font-medium">
+            <option value="">Any Type</option>
+            <option value="sleeper">Sleeper</option>
+            <option value="chair">Chair Car</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Journey Window -->
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Journey Window</label>
+        <div class="flex gap-2 pt-1">
+          <button onclick="setWindow('day', this)"
+            class="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-medium text-sm hover:border-yellow-400 hover:text-yellow-600 transition window-btn">
+            ☀️ Day
+          </button>
+          <button onclick="setWindow('night', this)"
+            class="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-medium text-sm hover:border-blue-700 hover:text-blue-800 transition window-btn">
+            🌙 Night
+          </button>
+          <button onclick="setWindow('', this)"
+            class="flex-1 py-3 rounded-xl border-2 border-red-500 text-red-600 font-medium text-sm window-btn active-window">
+            All
+          </button>
+        </div>
+        <input type="hidden" id="journeyWindow" value=""/>
+      </div>
+    </div>
+
+    <!-- Search Button -->
+    <button onclick="searchBuses()"
+      class="mt-6 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl text-lg shadow-md transition flex items-center justify-center gap-2">
+      <span>🔍</span> Search Buses
+    </button>
+  </div>
+</section>
+
+<!-- ── Results ───────────────────────────────────────────────── -->
+<section class="max-w-5xl mx-auto px-4 py-10">
+  <div id="loadingSpinner" class="hidden text-center py-12">
+    <div class="inline-block animate-spin text-5xl">🔄</div>
+    <p class="text-gray-500 mt-3 font-medium">Searching best buses for you...</p>
+  </div>
+
+  <div id="resultsHeader" class="hidden mb-4 flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-bold text-gray-800" id="resultsTitle"></h2>
+      <p class="text-sm text-gray-500" id="resultsSubtitle"></p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="sortResults('fare')" class="text-xs border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-100">💰 Price</button>
+      <button onclick="sortResults('rating')" class="text-xs border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-100">⭐ Rating</button>
+      <button onclick="sortResults('departure')" class="text-xs border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-100">⏰ Departure</button>
+    </div>
+  </div>
+
+  <div id="resultsContainer" class="flex flex-col gap-5"></div>
+
+  <div id="noResults" class="hidden text-center py-16">
+    <div class="text-6xl mb-4">🚫</div>
+    <h3 class="text-xl font-bold text-gray-700">No buses found</h3>
+    <p class="text-gray-500 mt-2">Try adjusting your filters or date.</p>
+  </div>
+</section>
+
+<!-- ── Why Us ─────────────────────────────────────────────────── -->
+<section class="bg-[#1e3a5f] text-white py-12 px-4">
+  <div class="max-w-5xl mx-auto">
+    <h2 class="text-2xl font-bold text-center mb-8">Why Travel with BusGo?</h2>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+      <div>
+        <div class="text-4xl mb-2">🛡️</div>
+        <div class="font-semibold">Safe Journeys</div>
+        <div class="text-sm text-blue-200 mt-1">Verified drivers & buses</div>
+      </div>
+      <div>
+        <div class="text-4xl mb-2">💺</div>
+        <div class="font-semibold">Seat Selection</div>
+        <div class="text-sm text-blue-200 mt-1">Live interactive maps</div>
+      </div>
+      <div>
+        <div class="text-4xl mb-2">💳</div>
+        <div class="font-semibold">Easy Payments</div>
+        <div class="text-sm text-blue-200 mt-1">UPI, Cards, Net Banking</div>
+      </div>
+      <div>
+        <div class="text-4xl mb-2">🔄</div>
+        <div class="font-semibold">Easy Cancellations</div>
+        <div class="text-sm text-blue-200 mt-1">Up to 90% refund</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+// ── State ────────────────────────────────────────────────────────
+let allResults = [];
+let journeyWindow = '';
+
+// ── UI Helpers ───────────────────────────────────────────────────
+function toggleMobileMenu() {
+  document.getElementById('mobileMenu').classList.toggle('hidden');
+}
+
+function swapCities() {
+  const src = document.getElementById('source');
+  const dst = document.getElementById('destination');
+  [src.value, dst.value] = [dst.value, src.value];
+}
+
+function setWindow(val, btn) {
+  journeyWindow = val;
+  document.getElementById('journeyWindow').value = val;
+  document.querySelectorAll('.window-btn').forEach(b => {
+    b.classList.remove('active-window', 'border-red-500', 'text-red-600');
+    b.classList.add('border-gray-200', 'text-gray-600');
+  });
+  btn.classList.add('active-window', 'border-red-500', 'text-red-600');
+  btn.classList.remove('border-gray-200', 'text-gray-600');
+}
+
+// ── Search ───────────────────────────────────────────────────────
+async function searchBuses() {
+  const source = document.getElementById('source').value;
+  const dest   = document.getElementById('destination').value;
+  const date   = document.getElementById('journeyDate').value;
+  const pax    = document.getElementById('passengerCount').value;
+  const btype  = document.getElementById('busType').value;
+  const window = document.getElementById('journeyWindow').value;
+
+  if (!source || !dest) {
+    alert('Please select source and destination cities.');
+    return;
+  }
+  if (source === dest) {
+    alert('Source and destination cannot be the same.');
+    return;
+  }
+
+  // Show loading
+  document.getElementById('loadingSpinner').classList.remove('hidden');
+  document.getElementById('resultsContainer').innerHTML = '';
+  document.getElementById('resultsHeader').classList.add('hidden');
+  document.getElementById('noResults').classList.add('hidden');
+
+  const params = new URLSearchParams({
+    source, destination: dest, journey_date: date,
+    passenger_count: pax
+  });
+  if (btype)   params.append('bus_type', btype);
+  if (window)  params.append('journey_window', window);
+
+  try {
+    const res  = await fetch(`/api/search/trips?${params}`);
+    const data = await res.json();
+    allResults = data.results || [];
+    renderResults(allResults, source, dest, date);
+  } catch (e) {
+    alert('Search failed. Please try again.');
+  } finally {
+    document.getElementById('loadingSpinner').classList.add('hidden');
+  }
+}
+
+// ── Render ───────────────────────────────────────────────────────
+function renderResults(results, source, dest, date) {
+  const container = document.getElementById('resultsContainer');
+  const header    = document.getElementById('resultsHeader');
+  const noRes     = document.getElementById('noResults');
+
+  if (results.length === 0) {
+    noRes.classList.remove('hidden');
+    header.classList.add('hidden');
+    return;
+  }
+
+  header.classList.remove('hidden');
+  noRes.classList.add('hidden');
+  document.getElementById('resultsTitle').textContent =
+    `${source} → ${dest}`;
+  document.getElementById('resultsSubtitle').textContent =
+    `${results.length} bus${results.length > 1 ? 'es' : ''} found · ${new Date(date + 'T00:00').toLocaleDateString('en-IN', {weekday:'short', day:'numeric', month:'short', year:'numeric'})}`;
+
+  container.innerHTML = results.map(trip => buildTripCard(trip)).join('');
+}
+
+function buildTripCard(trip) {
+  const amenityIcons = {
+    'WiFi':'📶','USB Charging':'🔌','Blanket':'🛏️',
+    'Water Bottle':'💧','Snacks':'🍪'
+  };
+  const amenityHTML = trip.bus.amenities
+    .map(a => `<span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">${amenityIcons[a]||'✓'} ${a}</span>`)
+    .join('');
+
+  const stars = '★'.repeat(Math.round(trip.driver?.rating || 0)) +
+                '☆'.repeat(5 - Math.round(trip.driver?.rating || 0));
+
+  const busTypeBadge = trip.bus.type === 'sleeper'
+    ? '<span class="bg-indigo-100 text-indigo-700 text-xs font-semibold px-2 py-0.5 rounded-full">🛏 Sleeper</span>'
+    : '<span class="bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">💺 Chair</span>';
+
+  const acBadge = trip.bus.ac_type === 'AC'
+    ? '<span class="bg-cyan-100 text-cyan-700 text-xs font-semibold px-2 py-0.5 rounded-full">❄️ AC</span>'
+    : '<span class="bg-orange-100 text-orange-700 text-xs font-semibold px-2 py-0.5 rounded-full">🌡 Non-AC</span>';
+
+  const nightBadge = trip.is_night_journey
+    ? '<span class="bg-gray-800 text-white text-xs font-semibold px-2 py-0.5 rounded-full">🌙 Night</span>'
+    : '<span class="bg-yellow-100 text-yellow-700 text-xs font-semibold px-2 py-0.5 rounded-full">☀️ Day</span>';
+
+  const availPct = (trip.availability.available_seats / trip.availability.total_seats) * 100;
+  const availColor = availPct < 20 ? 'text-red-600' : availPct < 50 ? 'text-orange-500' : 'text-green-600';
+
+  return `
+  <div class="bg-white rounded-2xl shadow-md card-hover overflow-hidden border border-gray-100">
+    <!-- Top strip -->
+    <div class="bg-gradient-to-r from-[#1e3a5f] to-[#2c5282] px-5 py-2 flex items-center justify-between">
+      <div class="flex items-center gap-2 text-white">
+        <span class="font-bold text-base">${trip.bus.name}</span>
+        <span class="text-blue-300 text-xs">${trip.bus.number}</span>
+      </div>
+      <div class="flex gap-1.5">${busTypeBadge}${acBadge}${nightBadge}</div>
+    </div>
+
+    <div class="p-5">
+      <div class="flex flex-col md:flex-row md:items-center gap-4">
+
+        <!-- Timings -->
+        <div class="flex items-center gap-3 flex-1">
+          <div class="text-center">
+            <div class="text-2xl font-black text-gray-900">${trip.departure_time}</div>
+            <div class="text-xs text-gray-500 font-medium">${trip.route.source}</div>
+          </div>
+          <div class="flex-1 text-center relative">
+            <div class="border-t-2 border-dashed border-gray-300"></div>
+            <div class="text-xs text-gray-400 mt-1">🚌 Direct</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl font-black text-gray-900">${trip.arrival_time}</div>
+            <div class="text-xs text-gray-500 font-medium">${trip.route.destination}</div>
+          </div>
+        </div>
+
+        <!-- Driver -->
+        <div class="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-2 md:w-48">
+          <div class="text-2xl">👤</div>
+          <div>
+            <div class="text-sm font-semibold text-gray-800">${trip.driver?.name || 'N/A'}</div>
+            <div class="text-xs text-yellow-500 font-bold">${stars} <span class="text-gray-500">${trip.driver?.rating}</span></div>
+            <div class="text-xs text-gray-500">${trip.driver?.experience_years}y exp</div>
+          </div>
+        </div>
+
+        <!-- Fare + CTA -->
+        <div class="flex flex-col items-end gap-2 md:w-44">
+          <div class="text-right">
+            <div class="text-2xl font-extrabold text-red-600">₹${trip.fare.total}</div>
+            <div class="text-xs text-gray-400">per person (incl. taxes)</div>
+          </div>
+          <div class="${availColor} text-sm font-semibold">
+            ${trip.availability.available_seats} seats left
+          </div>
+          <button
+            onclick="viewSeats('${trip.trip_id}', '${trip.route.source}', '${trip.route.destination}')"
+            class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-5 rounded-xl transition text-sm">
+            View Seats →
+          </button>
+        </div>
+      </div>
+
+      <!-- Amenities + Route info toggle -->
+      <div class="mt-4 flex flex-wrap gap-2 items-center">
+        ${amenityHTML}
+        <button onclick="toggleRouteInfo(this, '${trip.trip_id}')"
+          class="ml-auto text-xs text-blue-600 hover:underline font-medium">
+          Route Info ▼
+        </button>
+      </div>
+
+      <!-- Route stops (hidden by default) -->
+      <div id="route-${trip.trip_id}" class="hidden mt-3 bg-gray-50 rounded-xl p-3">
+        <div class="flex flex-col gap-2">
+          ${trip.route.stops.map((stop, i) => `
+            <div class="flex items-center gap-3 text-sm">
+              <div class="w-3 h-3 rounded-full ${i === 0 ? 'bg-green-500' : i === trip.route.stops.length-1 ? 'bg-red-500' : 'bg-blue-400'} flex-shrink-0"></div>
+              <span class="font-medium text-gray-800 w-24">${stop.city}</span>
+              <span class="text-gray-500 text-xs">
+                ${stop.arrival ? '🛬 ' + stop.arrival : ''}
+                ${stop.departure ? ' 🛫 ' + stop.departure : ''}
+              </span>
+            </div>
+            ${i < trip.route.stops.length-1 ? '<div class="ml-1.5 w-px h-4 bg-gray-300 ml-1"></div>' : ''}
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Fare breakdown (expandable) -->
+      <div class="mt-2">
+        <button onclick="toggleFare(this, '${trip.trip_id}')"
+          class="text-xs text-gray-500 hover:text-gray-700 font-medium">
+          💰 View Fare Breakdown ▼
+        </button>
+        <div id="fare-${trip.trip_id}" class="hidden mt-2 bg-yellow-50 rounded-xl p-3 text-sm">
+          <div class="flex justify-between py-0.5">
+            <span class="text-gray-600">Base Fare</span>
+            <span class="font-medium">₹${trip.fare.base_fare}</span>
+          </div>
+          <div class="flex justify-between py-0.5">
+            <span class="text-gray-600">GST (18%)</span>
+            <span class="font-medium">₹${trip.fare.gst}</span>
+          </div>
+          <div class="flex justify-between py-0.5">
+            <span class="text-gray-600">Convenience Fee</span>
+            <span class="font-medium">₹${trip.fare.convenience_fee}</span>
+          </div>
+          <div class="border-t mt-1 pt-1 flex justify-between font-bold">
+            <span>Total</span>
+            <span class="text-red-600">₹${trip.fare.total}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleRouteInfo(btn, tripId) {
+  const el = document.getElementById(`route-${tripId}`);
+  el.classList.toggle('hidden');
+  btn.textContent = el.classList.contains('hidden') ? 'Route Info ▼' : 'Route Info ▲';
+}
+
+function toggleFare(btn, tripId) {
+  const el = document.getElementById(`fare-${tripId}`);
+  el.classList.toggle('hidden');
+  btn.textContent = el.classList.contains('hidden') ? '💰 View Fare Breakdown ▼' : '💰 Hide Fare Breakdown ▲';
+}
+
+// ── Sort ─────────────────────────────────────────────────────────
+function sortResults(by) {
+  const sorted = [...allResults].sort((a, b) => {
+    if (by === 'fare')      return a.fare.total - b.fare.total;
+    if (by === 'rating')    return (b.driver?.rating || 0) - (a.driver?.rating || 0);
+    if (by === 'departure') return a.departure_time.localeCompare(b.departure_time);
+    return 0;
+  });
+  const container = document.getElementById('resultsContainer');
+  container.innerHTML = sorted.map(t => buildTripCard(t)).join('');
+}
+
+// ── Navigate ──────────────────────────────────────────────────────
+function viewSeats(tripId, from, to) {
+  window.location.href = `/seats?trip_id=${tripId}&from_stop=${encodeURIComponent(from)}&to_stop=${encodeURIComponent(to)}`;
+}
+</script>
+</body>
+</html>

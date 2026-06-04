@@ -1,0 +1,676 @@
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Select Seats – BusGo</title>
+  <script src="[cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+  <link href="[fonts.googleapis.com](https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap)" rel="stylesheet"/>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
+
+    /* Seat Styles */
+    .seat { width: 44px; height: 44px; border-radius: 10px 10px 6px 6px;
+            cursor: pointer; display:flex; align-items:center; justify-content:center;
+            font-size: 10px; font-weight: 700; border: 2px solid transparent;
+            transition: all .15s; position: relative; }
+    .seat:hover:not(.seat-booked):not(.seat-locked) { transform: scale(1.1); }
+
+    .seat-available   { background:#dcfce7; border-color:#16a34a; color:#15803d; }
+    .seat-booked      { background:#fee2e2; border-color:#dc2626; color:#b91c1c; cursor:not-allowed; }
+    .seat-locked      { background:#fef9c3; border-color:#ca8a04; color:#92400e; cursor:not-allowed; }
+    .seat-female      { background:#fce7f3; border-color:#db2777; color:#9d174d; }
+    .seat-selected    { background:#1e3a5f; border-color:#1e40af; color:#fff; transform: scale(1.08); }
+
+    .seat::before { content: '🪑'; position:absolute; top:-2px; font-size:20px; line-height:1; }
+    .seat-available::before  { filter: hue-rotate(100deg) brightness(0.9); }
+    .seat-booked::before     { filter: grayscale(1) brightness(0.7); }
+    .seat-selected::before   { filter: brightness(10); }
+    .seat-female::before     { filter: hue-rotate(280deg); }
+
+    /* Deck divider */
+    .aisle-gap { width: 24px; }
+
+    /* Lock timer ring */
+    @keyframes countdown { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 113; } }
+    .timer-ring { animation: countdown linear forwards; }
+
+    /* Passenger form animation */
+    .slide-in { animation: slideIn .3s ease-out; }
+    @keyframes slideIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  </style>
+</head>
+<body>
+
+<!-- ── Navbar ────────────────────────────────────────────────────── -->
+<nav class="bg-[#1e3a5f] text-white shadow-lg">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
+    <a href="/" class="flex items-center gap-2 hover:text-red-300 transition">
+      <span>←</span>
+      <span class="text-xl">🚌</span>
+      <span class="font-bold">BusGo</span>
+    </a>
+    <span class="text-blue-300">/</span>
+    <span class="text-blue-100 text-sm">Select Seats</span>
+  </div>
+</nav>
+
+<!-- ── Trip Summary Bar ──────────────────────────────────────────── -->
+<div class="bg-white border-b border-gray-200 shadow-sm">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center gap-4">
+    <div class="flex items-center gap-2">
+      <span class="text-2xl font-black text-gray-800">{{ from_stop }}</span>
+      <span class="text-red-500 text-xl">→</span>
+      <span class="text-2xl font-black text-gray-800">{{ to_stop }}</span>
+    </div>
+    <div class="flex items-center gap-4 text-sm text-gray-600">
+      <span>📅 {{ trip.journey_date }}</span>
+      <span>🚌 {{ bus.name }}</span>
+      <span>{{ bus.ac_type.value }} · {{ bus.bus_type.value | title }}</span>
+    </div>
+    <div class="ml-auto flex items-center gap-2">
+      {% if driver %}
+      <span class="text-sm">👤 {{ driver.name }}</span>
+      <span class="text-yellow-500 font-bold text-sm">★ {{ driver.rating }}</span>
+      {% endif %}
+      <span class="bg-blue-100 text-blue-700 font-semibold text-sm px-3 py-1 rounded-full">
+        ⏱️ <span id="lockTimerDisplay" class="hidden">Lock: <span id="lockCountdown"></span>s</span>
+        <span id="noLockMsg">Select a seat</span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Main Layout ────────────────────────────────────────────────── -->
+<div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- LEFT: Seat Map ──────────────────────────────────────────────── -->
+  <div class="lg:col-span-2 flex flex-col gap-4">
+
+    <!-- Legend -->
+    <div class="bg-white rounded-2xl p-4 shadow-sm flex flex-wrap gap-4">
+      <div class="font-semibold text-gray-700 text-sm w-full">Seat Legend</div>
+      <div class="flex items-center gap-2 text-xs text-gray-600">
+        <div class="w-5 h-5 rounded bg-green-100 border-2 border-green-600"></div> Available
+      </div>
+      <div class="flex items-center gap-2 text-xs text-gray-600">
+        <div class="w-5 h-5 rounded bg-red-100 border-2 border-red-600"></div> Booked
+      </div>
+      <div class="flex items-center gap-2 text-xs text-gray-600">
+        <div class="w-5 h-5 rounded bg-[#1e3a5f] border-2 border-blue-900"></div> Selected
+      </div>
+      <div class="flex items-center gap-2 text-xs text-gray-600">
+        <div class="w-5 h-5 rounded bg-pink-100 border-2 border-pink-500"></div> Female Reserved
+      </div>
+      <div class="flex items-center gap-2 text-xs text-gray-600">
+        <div class="w-5 h-5 rounded bg-yellow-100 border-2 border-yellow-500"></div> Locked (10min)
+      </div>
+    </div>
+
+    <!-- Seat Grid Container -->
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div class="bg-gradient-to-r from-gray-700 to-gray-800 text-white px-5 py-3 flex items-center justify-between">
+        <span class="font-bold">🪑 Seat Selection</span>
+        <span class="text-sm text-gray-300" id="selectedCountBadge">0 / 6 selected</span>
+      </div>
+
+      <div class="p-5">
+        <!-- Driver cab indicator -->
+        <div class="flex justify-end mb-4">
+          <div class="bg-gray-100 border-2 border-gray-300 rounded-xl px-4 py-2 text-xs font-bold text-gray-500 text-center">
+            🚗 DRIVER
+          </div>
+        </div>
+
+        <div id="seatMap" class="min-h-48">
+          <div class="flex items-center justify-center h-32 text-gray-400">
+            <div class="animate-pulse">Loading seat map...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Booking Panel ────────────────────────────────────────── -->
+  <div class="flex flex-col gap-4">
+
+    <!-- Fare Summary -->
+    <div class="bg-white rounded-2xl shadow-sm p-5">
+      <h3 class="font-bold text-gray-800 mb-3">💰 Fare Summary</h3>
+      <div id="fareSummary" class="text-sm text-gray-500 italic">
+        Select seats to see fare breakdown
+      </div>
+    </div>
+
+    <!-- Selected Seats -->
+    <div class="bg-white rounded-2xl shadow-sm p-5">
+      <h3 class="font-bold text-gray-800 mb-3">Selected Seats</h3>
+      <div id="selectedSeatsDisplay" class="text-sm text-gray-500 italic">
+        No seats selected
+      </div>
+    </div>
+
+    <!-- Passenger Details Form -->
+    <div id="passengerSection" class="hidden bg-white rounded-2xl shadow-sm p-5">
+      <h3 class="font-bold text-gray-800 mb-3">👥 Passenger Details</h3>
+      <div id="passengerForms" class="flex flex-col gap-4"></div>
+    </div>
+
+    <!-- Payment Section -->
+    <div id="paymentSection" class="hidden bg-white rounded-2xl shadow-sm p-5">
+      <h3 class="font-bold text-gray-800 mb-3">💳 Payment Method</h3>
+      <div class="flex flex-col gap-2">
+        <label class="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-red-400 has-[:checked]:border-red-600 has-[:checked]:bg-red-50 transition">
+          <input type="radio" name="paymentMethod" value="UPI" class="accent-red-600"/> 
+          <span class="text-2xl">📱</span>
+          <div>
+            <div class="font-semibold text-gray-800">UPI</div>
+            <div class="text-xs text-gray-500">GPay, PhonePe, Paytm</div>
+          </div>
+        </label>
+        <label class="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-red-400 has-[:checked]:border-red-600 has-[:checked]:bg-red-50 transition">
+          <input type="radio" name="paymentMethod" value="Card" class="accent-red-600"/>
+          <span class="text-2xl">💳</span>
+          <div>
+            <div class="font-semibold text-gray-800">Debit / Credit Card</div>
+            <div class="text-xs text-gray-500">Visa, Mastercard, RuPay</div>
+          </div>
+        </label>
+        <label class="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-red-400 has-[:checked]:border-red-600 has-[:checked]:bg-red-50 transition">
+          <input type="radio" name="paymentMethod" value="Net Banking" class="accent-red-600"/>
+          <span class="text-2xl">🏦</span>
+          <div>
+            <div class="font-semibold text-gray-800">Net Banking</div>
+            <div class="text-xs text-gray-500">All major banks</div>
+          </div>
+        </label>
+      </div>
+
+      <button onclick="confirmBooking()"
+        class="mt-4 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl text-base transition shadow-md flex items-center justify-center gap-2">
+        🔒 Confirm & Pay <span id="payBtnAmount"></span>
+      </button>
+      <p class="text-xs text-center text-gray-400 mt-2">🛡 Secure payment · SSL encrypted</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Success Modal ──────────────────────────────────────────────── -->
+<div id="successModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center slide-in">
+    <div class="text-6xl mb-4">🎉</div>
+    <h2 class="text-2xl font-black text-gray-800 mb-2">Booking Confirmed!</h2>
+    <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+      <div class="text-xs text-gray-500 font-medium mb-1">YOUR PNR NUMBER</div>
+      <div class="text-3xl font-black text-green-700 tracking-widest" id="pnrDisplay"></div>
+    </div>
+    <div id="bookingDetails" class="text-sm text-gray-600 text-left bg-gray-50 rounded-xl p-4 mb-4"></div>
+    <div class="flex gap-3">
+      <button onclick="downloadTicket()" class="flex-1 bg-[#1e3a5f] text-white font-bold py-3 rounded-xl hover:bg-blue-900 transition">
+        📥 Download Ticket
+      </button>
+      <button onclick="window.location.href='/'" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition">
+        🏠 Go Home
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────
+const TRIP_ID    = "{{ trip.id }}";
+const FROM_STOP  = "{{ from_stop }}";
+const TO_STOP    = "{{ to_stop }}";
+const BASE_FARE  = {{ trip.base_fare }};
+const GST_RATE   = {{ trip.gst_rate }};
+const CONV_FEE   = {{ trip.convenience_fee }};
+const MAX_SEATS  = 6;
+const LOCK_SECS  = 600;
+
+let selectedSeats  = new Set();
+let lockTimerInt   = null;
+let lockRemainingS = 0;
+let seatData       = {};      // seat_number → {status, deck, row, col}
+
+// ─────────────────────────────────────────────────────────
+// Boot: Load seat map from API
+// ─────────────────────────────────────────────────────────
+async function loadSeatMap() {
+  const res  = await fetch(`/api/booking/seats/${TRIP_ID}?from_stop=${encodeURIComponent(FROM_STOP)}&to_stop=${encodeURIComponent(TO_STOP)}`);
+  const data = await res.json();
+  seatData = {};
+
+  const grid    = data.grid;
+  const busType = grid.bus_type;
+
+  if (busType === "sleeper") {
+    renderSleeperGrid(grid.decks);
+  } else {
+    renderChairGrid(grid.decks.main);
+  }
+}
+
+// ─── Sleeper: Lower + Upper deck ─────────────────────────
+function renderSleeperGrid(decks) {
+  const map = document.getElementById('seatMap');
+  map.innerHTML = '';
+
+  for (const [deckKey, seats] of Object.entries(decks)) {
+    const label = deckKey === 'lower' ? '⬇ Lower Deck' : '⬆ Upper Deck';
+    const section = document.createElement('div');
+    section.className = 'mb-6';
+
+    section.innerHTML = `<div class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+      <span>${label}</span>
+      <div class="flex-1 h-px bg-gray-200"></div>
+    </div>`;
+
+    // Group by row (4 seats per row + aisle)
+    const rows = {};
+    seats.forEach(s => {
+      seatData[s.seat_number] = s;
+      if (!rows[s.row]) rows[s.row] = [];
+      rows[s.row].push(s);
+    });
+
+    const grid = document.createElement('div');
+    grid.className = 'flex flex-col gap-2';
+
+    Object.values(rows).forEach(rowSeats => {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'flex items-center gap-2';
+
+      rowSeats.forEach((seat, idx) => {
+        if (idx === 2) {
+          const gap = document.createElement('div');
+          gap.className = 'aisle-gap';
+          rowEl.appendChild(gap);
+        }
+        rowEl.appendChild(buildSeatEl(seat));
+      });
+      grid.appendChild(rowEl);
+    });
+
+    section.appendChild(grid);
+    map.appendChild(section);
+  }
+}
+
+// ─── Chair Car: 3+2 Layout ───────────────────────────────
+function renderChairGrid(seats) {
+  const map = document.getElementById('seatMap');
+  map.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'text-xs font-bold text-gray-500 uppercase tracking-wider mb-3';
+  header.textContent = '💺 Chair Car — 3 + 2 Layout';
+  map.appendChild(header);
+
+  // Col header
+  const colHeader = document.createElement('div');
+  colHeader.className = 'flex items-center gap-2 mb-2';
+  ['A','B','C','','D','E'].forEach(c => {
+    const el = document.createElement('div');
+    el.className = c ? 'w-11 text-center text-xs font-bold text-gray-400' : 'aisle-gap';
+    el.textContent = c;
+    colHeader.appendChild(el);
+  });
+  map.appendChild(colHeader);
+
+  // Group by row
+  const rows = {};
+  seats.forEach(s => {
+    seatData[s.seat_number] = s;
+    if (!rows[s.row]) rows[s.row] = {};
+    rows[s.row][s.col] = s;
+  });
+
+  Object.entries(rows).forEach(([rowNum, cols]) => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'flex items-center gap-2 mb-1.5';
+
+    // Row number label
+    const lbl = document.createElement('div');
+    lbl.className = 'w-5 text-xs text-gray-400 text-right font-medium';
+    lbl.textContent = rowNum;
+    rowEl.appendChild(lbl);
+
+    ['A','B','C'].forEach(c => {
+      if (cols[c]) rowEl.appendChild(buildSeatEl(cols[c]));
+    });
+
+    const gap = document.createElement('div');
+    gap.className = 'aisle-gap flex items-center justify-center text-gray-300 text-xs';
+    gap.innerHTML = '|';
+    rowEl.appendChild(gap);
+
+    ['D','E'].forEach(c => {
+      if (cols[c]) rowEl.appendChild(buildSeatEl(cols[c]));
+    });
+
+    map.appendChild(rowEl);
+  });
+}
+
+// ─── Build individual seat element ───────────────────────
+function buildSeatEl(seat) {
+  const el = document.createElement('div');
+  el.className = `seat seat-${seat.status}`;
+  el.id        = `seat-${seat.seat_number}`;
+  el.title     = `${seat.seat_number} · ${seat.status.charAt(0).toUpperCase() + seat.status.slice(1)}`;
+
+  const label = document.createElement('span');
+  label.className = 'absolute bottom-0.5 text-center w-full text-[9px] font-black leading-none';
+  label.textContent = seat.seat_number;
+  el.appendChild(label);
+
+  if (seat.status === 'available' || seat.status === 'female_reserved') {
+    el.addEventListener('click', () => toggleSeat(seat.seat_number));
+  }
+
+  return el;
+}
+
+// ─────────────────────────────────────────────────────────
+// Seat Toggle Logic
+// ─────────────────────────────────────────────────────────
+async function toggleSeat(seatNumber) {
+  const seat = seatData[seatNumber];
+
+  if (selectedSeats.has(seatNumber)) {
+    // Deselect
+    selectedSeats.delete(seatNumber);
+    const el = document.getElementById(`seat-${seatNumber}`);
+    el.className = `seat seat-${seat.status}`;
+  } else {
+    if (selectedSeats.size >= MAX_SEATS) {
+      showToast(`Maximum ${MAX_SEATS} seats per booking`, 'error');
+      return;
+    }
+    selectedSeats.add(seatNumber);
+    const el = document.getElementById(`seat-${seatNumber}`);
+    el.className = 'seat seat-selected';
+  }
+
+  updateUI();
+
+  // Lock seats via API on first selection
+  if (selectedSeats.size === 1) {
+    startLockTimer();
+  }
+
+  // API lock call
+  if (selectedSeats.size > 0) {
+    await fetch('/api/booking/lock', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({trip_id: TRIP_ID, seat_numbers: [...selectedSeats]})
+    });
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Lock Timer (10 minutes countdown)
+// ─────────────────────────────────────────────────────────
+function startLockTimer() {
+  if (lockTimerInt) return;
+  lockRemainingS = LOCK_SECS;
+
+  document.getElementById('lockTimerDisplay').classList.remove('hidden');
+  document.getElementById('noLockMsg').classList.add('hidden');
+
+  lockTimerInt = setInterval(() => {
+    lockRemainingS--;
+    const m = Math.floor(lockRemainingS / 60);
+    const s = lockRemainingS % 60;
+    document.getElementById('lockCountdown').textContent =
+      `${m}:${String(s).padStart(2,'0')}`;
+
+    if (lockRemainingS <= 0) {
+      clearInterval(lockTimerInt);
+      lockTimerInt = null;
+      handleLockExpiry();
+    }
+  }, 1000);
+}
+
+function resetLockTimer() {
+  clearInterval(lockTimerInt);
+  lockTimerInt = null;
+  lockRemainingS = 0;
+  document.getElementById('lockTimerDisplay').classList.add('hidden');
+  document.getElementById('noLockMsg').classList.remove('hidden');
+}
+
+function handleLockExpiry() {
+  showToast('⏰ Seat lock expired. Please reselect.', 'error');
+  // Release UI
+  selectedSeats.forEach(sn => {
+    const el = document.getElementById(`seat-${sn}`);
+    if (el) el.className = `seat seat-${seatData[sn].status}`;
+  });
+  selectedSeats.clear();
+  updateUI();
+  resetLockTimer();
+  // Reload seat map to reflect actual state
+  loadSeatMap();
+}
+
+// ─────────────────────────────────────────────────────────
+// UI Updates
+// ─────────────────────────────────────────────────────────
+function updateUI() {
+  const count = selectedSeats.size;
+
+  // Badge
+  document.getElementById('selectedCountBadge').textContent =
+    `${count} / ${MAX_SEATS} selected`;
+
+  // Selected seats display
+  const seatsDiv = document.getElementById('selectedSeatsDisplay');
+  if (count === 0) {
+    seatsDiv.innerHTML = '<span class="text-gray-500 italic">No seats selected</span>';
+    resetLockTimer();
+  } else {
+    seatsDiv.innerHTML = [...selectedSeats].map(s =>
+      `<span class="inline-block bg-[#1e3a5f] text-white text-xs font-bold px-2 py-1 rounded-lg mr-1 mb-1">${s}</span>`
+    ).join('');
+  }
+
+  // Fare summary
+  const base   = BASE_FARE * count;
+  const gst    = +(base * GST_RATE).toFixed(2);
+  const total  = +(base + gst + (count > 0 ? CONV_FEE : 0)).toFixed(2);
+
+  if (count === 0) {
+    document.getElementById('fareSummary').innerHTML =
+      '<span class="text-gray-500 italic">Select seats to see fare breakdown</span>';
+    document.getElementById('passengerSection').classList.add('hidden');
+    document.getElementById('paymentSection').classList.add('hidden');
+  } else {
+    document.getElementById('fareSummary').innerHTML = `
+      <div class="space-y-1.5">
+        <div class="flex justify-between"><span class="text-gray-600">Base Fare (${count} × ₹${BASE_FARE})</span><span class="font-semibold">₹${base}</span></div>
+        <div class="flex justify-between"><span class="text-gray-600">GST (18%)</span><span class="font-semibold">₹${gst}</span></div>
+        <div class="flex justify-between"><span class="text-gray-600">Convenience Fee</span><span class="font-semibold">₹${CONV_FEE}</span></div>
+        <div class="border-t pt-2 flex justify-between font-black text-base"><span>Total Payable</span><span class="text-red-600">₹${total}</span></div>
+      </div>`;
+    document.getElementById('payBtnAmount').textContent = `₹${total}`;
+    renderPassengerForms();
+    document.getElementById('passengerSection').classList.remove('hidden');
+    document.getElementById('paymentSection').classList.remove('hidden');
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Passenger Forms
+// ─────────────────────────────────────────────────────────
+function renderPassengerForms() {
+  const container = document.getElementById('passengerForms');
+  const seats = [...selectedSeats];
+  container.innerHTML = seats.map((seat, i) => `
+    <div class="border-2 border-gray-100 rounded-xl p-4 slide-in" style="animation-delay:${i*0.05}s">
+      <div class="font-semibold text-gray-700 text-sm mb-3">
+        Seat <span class="bg-[#1e3a5f] text-white px-2 py-0.5 rounded-lg">${seat}</span>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="col-span-2">
+          <input id="name-${seat}" type="text" placeholder="Full Name *"
+            class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-red-500 focus:outline-none"/>
+        </div>
+        <div>
+          <input id="age-${seat}" type="number" placeholder="Age *" min="1" max="120"
+            class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-red-500 focus:outline-none"/>
+        </div>
+        <div>
+          <select id="gender-${seat}" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-red-500 focus:outline-none">
+            <option value="">Gender *</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="col-span-2">
+          <input id="contact-${seat}" type="tel" placeholder="Phone / Email *"
+            class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-red-500 focus:outline-none"/>
+        </div>
+        <div class="col-span-2">
+          <input id="special-${seat}" type="text" placeholder="Special requests (optional)"
+            class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-red-500 focus:outline-none"/>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function collectPassengerDetails() {
+  const passengers = [];
+  let valid = true;
+
+  for (const seat of selectedSeats) {
+    const name    = document.getElementById(`name-${seat}`)?.value.trim();
+    const age     = document.getElementById(`age-${seat}`)?.value;
+    const gender  = document.getElementById(`gender-${seat}`)?.value;
+    const contact = document.getElementById(`contact-${seat}`)?.value.trim();
+    const special = document.getElementById(`special-${seat}`)?.value.trim();
+
+    if (!name || !age || !gender || !contact) {
+      showToast(`Please complete details for seat ${seat}`, 'error');
+      valid = false;
+      break;
+    }
+
+    passengers.push({ name, age: parseInt(age), gender, contact, seat_number: seat,
+                      special_requests: special || null });
+  }
+
+  return valid ? passengers : null;
+}
+
+// ─────────────────────────────────────────────────────────
+// Confirm Booking
+// ─────────────────────────────────────────────────────────
+async function confirmBooking() {
+  const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value;
+  if (!paymentMethod) {
+    showToast('Please select a payment method', 'error');
+    return;
+  }
+
+  const passengers = collectPassengerDetails();
+  if (!passengers) return;
+
+  const payload = {
+    trip_id: TRIP_ID,
+    user_id: "u1",           // Mock: replace with session user
+    from_stop: FROM_STOP,
+    to_stop: TO_STOP,
+    passengers,
+    payment_method: paymentMethod,
+  };
+
+  const btn = document.querySelector('#paymentSection button');
+  btn.disabled = true;
+  btn.textContent = '⏳ Processing...';
+
+  try {
+    const res  = await fetch('/api/booking/confirm', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      clearInterval(lockTimerInt);
+      showSuccessModal(data);
+    } else {
+      showToast(data.detail || 'Booking failed', 'error');
+      btn.disabled = false;
+      btn.textContent = `🔒 Confirm & Pay`;
+    }
+  } catch (e) {
+    showToast('Network error. Please try again.', 'error');
+    btn.disabled = false;
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Success Modal
+// ─────────────────────────────────────────────────────────
+function showSuccessModal(data) {
+  document.getElementById('pnrDisplay').textContent = data.pnr;
+
+  const fare = data.fare_breakdown;
+  document.getElementById('bookingDetails').innerHTML = `
+    <div class="grid grid-cols-2 gap-2 text-sm">
+      <div class="text-gray-500">Route</div>
+      <div class="font-semibold">${FROM_STOP} → ${TO_STOP}</div>
+      <div class="text-gray-500">Seats</div>
+      <div class="font-semibold">${data.seats.join(', ')}</div>
+      <div class="text-gray-500">Payment</div>
+      <div class="font-semibold text-green-600">✓ ${data.payment.method}</div>
+      <div class="text-gray-500">Transaction</div>
+      <div class="font-semibold text-xs">${data.payment.txn_id}</div>
+      <div class="text-gray-500 font-bold">Total Paid</div>
+      <div class="font-black text-red-600">₹${fare.grand_total}</div>
+    </div>`;
+
+  document.getElementById('successModal').classList.remove('hidden');
+}
+
+function downloadTicket() {
+  showToast('📄 PDF download will be available in production build', 'info');
+}
+
+// ─────────────────────────────────────────────────────────
+// Toast Notification
+// ─────────────────────────────────────────────────────────
+function showToast(message, type = 'info') {
+  const existing = document.getElementById('toast');
+  if (existing) existing.remove();
+
+  const colors = {
+    info:  'bg-blue-600',
+    error: 'bg-red-600',
+    success: 'bg-green-600',
+  };
+
+  const toast = document.createElement('div');
+  toast.id = 'toast';
+  toast.className = `fixed bottom-6 right-6 ${colors[type]} text-white px-5 py-3 rounded-xl shadow-2xl z-50 font-medium text-sm slide-in`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
+// ─────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', loadSeatMap);
+</script>
+</body>
+</html>
